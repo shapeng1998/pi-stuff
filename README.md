@@ -5,9 +5,7 @@ Personal [pi](https://pi.dev) package: extensions, skills, prompts and themes, s
 ## Setup on a machine
 
 ```sh
-git clone <this-repo> ~/Projects/pi-stuff
-cd ~/Projects/pi-stuff
-npm install          # dev types only; pi does not need this to load the package
+git clone https://github.com/shapeng1998/pi-stuff.git ~/Projects/pi-stuff
 pi install ~/Projects/pi-stuff
 ```
 
