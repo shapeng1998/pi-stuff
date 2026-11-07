@@ -9,8 +9,6 @@ git clone https://github.com/shapeng1998/pi-stuff.git ~/Projects/pi-stuff
 pi install ~/Projects/pi-stuff
 ```
 
-Then copy the preferences you want from `settings.example.json` into `~/.pi/agent/settings.json`.
-
 pi loads the package from this directory in place, so `git pull` followed by `/reload` (or restarting pi) picks up changes.
 
 ## Workflow

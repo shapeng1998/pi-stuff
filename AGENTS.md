@@ -8,7 +8,6 @@ This repo is a personal pi package (see pi docs `packages.md`), loaded via `pi i
 - `skills/<name>/SKILL.md` — agent skills, plus any helper scripts next to them.
 - `prompts/*.md` — prompt templates (slash commands).
 - `themes/*.json` — themes.
-- `settings.example.json` — reference copy of personal `~/.pi/agent/settings.json` preferences. Sync by hand; never put `deviceId`, credentials or tokens here.
 
 ## Rules
 
