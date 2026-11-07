@@ -19,7 +19,7 @@ pi loads the package from this directory in place, so `git pull` followed by `/r
 
 ## Extensions
 
-- [`codex-web-run.ts`](extensions/codex-web-run.ts) — port of Codex's `web.run` search tool as `web_run`, usable from any model. Env: `PI_WEB_RUN_MODE`, `PI_WEB_RUN_MODEL`, `PI_WEB_RUN_MAX_OUTPUT_TOKENS`.
+- [`web`](extensions/web) — Codex's `web.run` (search, open, find, click, …) for any model, via the openai-codex search endpoint. Env: `PI_WEB_MODE` (`cached`/`indexed`/`live`), `PI_WEB_MODEL`.
 
 ## Skills
 
