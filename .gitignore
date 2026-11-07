@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+*.log
+# never commit runtime state or credentials
+auth.json
+sessions/
+models-store.json

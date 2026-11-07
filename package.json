@@ -1,0 +1,40 @@
+{
+  "name": "pi-stuff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Peng Sha's personal pi coding agent extensions, skills, prompts, and themes",
+  "type": "module",
+  "keywords": [
+    "pi-package"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/*.ts",
+      "./extensions/*/index.ts"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "prompts": [
+      "./prompts/*.md"
+    ],
+    "themes": [
+      "./themes/*.json"
+    ]
+  },
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^1.5.0",
+    "@earendil-works/pi-tui": "^1.5.0",
+    "@types/node": "^26.6.6",
+    "typebox": "^1.3.27",
+    "typescript": "^7.0.2"
+  }
+}
