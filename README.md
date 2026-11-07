@@ -15,7 +15,7 @@ pi loads the package from this directory in place, so `git pull` followed by `/r
 
 ## Workflow
 
-- Edit, `npm run check`, then `/reload` in pi.
+- Edit, `pnpm check`, then `/reload` in pi.
 - Use `pi config` to toggle individual resources per machine.
 - Bump `version` and update `CHANGELOG.md` for notable changes.
 
