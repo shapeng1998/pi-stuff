@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.0] - 2026-11-08
+
+- Open source under MIT; Codex-derived parts of `web` credited in `THIRD_PARTY_NOTICES.md` (Apache-2.0).
+- README rewritten for installing via `pi install git:github.com/shapeng1998/pi-stuff`.
+
 ## [0.4.1] - 2026-11-08
 
 - `web`: send `originator: pi` (as pi's own openai-codex provider) instead of impersonating the Codex CLI.

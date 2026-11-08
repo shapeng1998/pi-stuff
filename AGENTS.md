@@ -17,4 +17,4 @@ Conventional directories, auto-discovered by pi (no `pi` manifest); create one w
 - Other runtime imports go in `dependencies`.
 - Run `pnpm check` after changing extensions; test in pi with `/reload`.
 - For user-visible changes, bump `version` in `package.json` and add a `CHANGELOG.md` entry (`## [x.y.z] - YYYY-MM-DD`), so other machines see "Extension Updates".
-- Add a one-line entry to `README.md` for every new extension, skill, prompt or theme.
+- Add a short `README.md` section for every new extension, skill, prompt or theme. Credit derived third-party code in `THIRD_PARTY_NOTICES.md`.

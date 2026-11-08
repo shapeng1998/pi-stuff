@@ -1,8 +1,13 @@
 {
   "name": "pi-stuff",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
-  "description": "Peng Sha's personal pi coding agent extensions, skills, prompts, and themes",
+  "description": "Personal pi coding agent extensions",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shapeng1998/pi-stuff.git"
+  },
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit"
