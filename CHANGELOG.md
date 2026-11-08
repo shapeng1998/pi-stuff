@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.1] - 2026-11-08
+
+- `web`: send `originator: pi` (as pi's own openai-codex provider) instead of impersonating the Codex CLI.
+
 ## [0.4.0] - 2026-11-08
 
 - `web`: mirror only the upstream API (schema and request); the rest is simplified (~255 → ~160 lines).

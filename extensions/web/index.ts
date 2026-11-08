@@ -104,7 +104,7 @@ async function search(ctx: any, commands: object, signal: AbortSignal | undefine
     headers: {
       Authorization: `Bearer ${auth.apiKey}`,
       ...(account && { "chatgpt-account-id": account }),
-      originator: "codex_cli_rs",
+      originator: "pi",
       "Content-Type": "application/json",
       Accept: "application/json",
     },

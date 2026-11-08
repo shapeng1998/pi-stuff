@@ -1,6 +1,6 @@
 {
   "name": "pi-stuff",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Peng Sha's personal pi coding agent extensions, skills, prompts, and themes",
   "type": "module",
