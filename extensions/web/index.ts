@@ -119,7 +119,7 @@ async function search(ctx: any, commands: object, signal: AbortSignal | undefine
     }),
   });
   const body = await res.text();
-  if (!res.ok) throw new Error(`web search failed (${res.status}): ${body.slice(0, 1000)}`);
+  if (!res.ok) throw new Error(`web search failed (${res.status}): ${body.slice(0, 1024)}`);
   return JSON.parse(body) as { output?: string; results?: { title?: string; url?: string; ref_id?: string }[] };
 }
 

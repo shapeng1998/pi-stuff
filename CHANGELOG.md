@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1] - 2026-11-08
+
+- `web`: errors truncated to 1024 characters again, as documented in 0.3.0.
+- README: list image search; drop the outdated note that github.com pages are refused (they open fine now).
+
 ## [0.5.0] - 2026-11-08
 
 - Open source under MIT; Codex-derived parts of `web` credited in `THIRD_PARTY_NOTICES.md` (Apache-2.0).
