@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0] - 2026-11-08
+
+- `web`: default mode is now `live` (real-time fetch, as Codex without a sandbox); set `PI_WEB_MODE=cached` for the old behavior.
+- `web`: description cut to two lines (~45 tokens); parameter docs carry the rest.
+- `web`: parameters carry upstream field descriptions; errors are truncated to 1024 bytes like Codex; 60s request timeout.
+- `web`: code reorganized into blocks that each mirror one upstream Codex file, with a recorded baseline (`openai/codex@c9b4267c`).
+- Add `scripts/codex-sync.sh` to list upstream changes since the baseline.
+
 ## [0.2.0] - 2026-11-07
 
 - Rename `codex-web-run` to `web` (tool name `web`).

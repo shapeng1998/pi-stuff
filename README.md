@@ -19,7 +19,7 @@ pi loads the package from this directory in place, so `git pull` followed by `/r
 
 ## Extensions
 
-- [`web`](extensions/web) — Codex's `web.run` (search, open, find, click, …) for any model, via the openai-codex search endpoint. Env: `PI_WEB_MODE` (`cached`/`indexed`/`live`), `PI_WEB_MODEL`.
+- [`web`](extensions/web) — Codex's `web.run` (search, open, find, click, …) for any model, via the openai-codex search endpoint. Env: `PI_WEB_MODE` (`live` default, `cached`, `indexed`), `PI_WEB_MODEL`. Mirrors upstream Codex; run `scripts/codex-sync.sh` to see upstream changes since the baseline.
 
 ## Skills
 
