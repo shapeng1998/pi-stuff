@@ -4,6 +4,8 @@ This repo is a personal pi package (see pi docs `packages.md`), loaded via `pi i
 
 ## Layout
 
+Conventional directories, auto-discovered by pi (no `pi` manifest); create one when first needed:
+
 - `extensions/` — one extension per `*.ts` file, or `extensions/<name>/index.ts` for multi-file ones.
 - `skills/<name>/SKILL.md` — agent skills, plus any helper scripts next to them.
 - `prompts/*.md` — prompt templates (slash commands).

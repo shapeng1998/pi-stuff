@@ -1,6 +1,6 @@
 # pi-stuff
 
-Personal [pi](https://pi.dev) package: extensions, skills, prompts and themes, synced across machines with git.
+Personal [pi](https://pi.dev) package, synced across machines with git.
 
 ## Setup on a machine
 
@@ -19,16 +19,4 @@ pi loads the package from this directory in place, so `git pull` followed by `/r
 
 ## Extensions
 
-- [`web`](extensions/web) — Codex's `web.run` (search, open, find, click, …) for any model, via the openai-codex search endpoint. Env: `PI_WEB_MODE` (`live` default, `cached`, `indexed`), `PI_WEB_MODEL`. Mirrors upstream Codex; run `scripts/codex-sync.sh` to see upstream changes since the baseline.
-
-## Skills
-
-_None yet._
-
-## Prompts
-
-_None yet._
-
-## Themes
-
-_None yet._
+- [`web`](extensions/web) — Codex's `web.run` (search, open, find, click, …) for any model, via the openai-codex search endpoint. Mirrors only the API from upstream Codex (links and baseline in the file header).

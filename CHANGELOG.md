@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0] - 2026-11-08
+
+- `web`: mirror only the upstream API (schema and request); the rest is simplified (~255 → ~160 lines).
+- `web`: stop sending conversation `input` (tested: search results are identical with or without it).
+- `web`: always live; `PI_WEB_MODE` and `PI_WEB_MODEL` removed. Description inlined.
+- Remove `scripts/codex-sync.sh` (upstream history links are in the file header), the `pi` manifest (conventional directories are auto-discovered) and empty skills/prompts/themes directories.
+
 ## [0.3.0] - 2026-11-08
 
 - `web`: default mode is now `live` (real-time fetch, as Codex without a sandbox); set `PI_WEB_MODE=cached` for the old behavior.

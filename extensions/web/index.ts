@@ -1,31 +1,22 @@
 /**
  * web: Codex's `web.run` for any pi model, via the openai-codex search endpoint.
  *
- * Upstream baseline: openai/codex@c9b4267c (2026-11-08). Each block below names the
- * upstream file it mirrors; keep field order and behavior in step with it.
- * Run scripts/codex-sync.sh to list upstream commits since the baseline.
- *
- * Intentionally different:
- *   - flat tool name `web` instead of namespace `web` + tool `run` (pi tool names have no ".")
- *   - shorter description.md instead of web_run_description.md
- *   - model falls back to an openai-codex model when the current model is from another provider
- *   - no `literature_search_query` (model-gated upstream; no model enables it at baseline)
- *   - assistant-text truncation keeps the head instead of the middle-out marker
- * Not mirrored: workspace/account routing, FedRAMP, proxy redirects, turn-metadata header,
- * telemetry, WebSearchBegin/End events (pi renders the call itself).
- *
- * Env: PI_WEB_MODE = cached | indexed | live (default live, as Codex without a sandbox); PI_WEB_MODEL = fallback model id.
+ * Only the API is mirrored from upstream (baseline openai/codex@c9b4267c, 2026-11-08):
+ *   - Commands ↔ https://github.com/openai/codex/commits/main/codex-rs/codex-api/src/search.rs
+ *   - search() ↔ https://github.com/openai/codex/commits/main/codex-rs/codex-api/src/endpoint/search.rs
+ * To sync: check those histories for commits after the baseline, apply, then bump the baseline.
+ * Everything else is our own.
  */
-import { readFileSync } from "node:fs";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type, type TSchema } from "typebox";
 
 const PROVIDER = "openai-codex";
-const DESCRIPTION = readFileSync(new URL("./description.md", import.meta.url), "utf8");
+const DESCRIPTION = `Tool for accessing the internet. Put several commands in one call to get results faster.
 
-// ① Commands schema ↔ codex-api/src/search.rs (SearchCommands and its operation structs)
-//    Descriptions are the upstream doc comments; Codex keeps them in the tool definition.
+Reference ids like \`turn0search0\` are for calls to this tool only. Cite sources to the user as Markdown links to the supporting page.`;
+
+// Commands schema ↔ codex-api/src/search.rs
 
 const d = <T extends TSchema>(description: string, schema: T) => ({ ...schema, description }) as T;
 const opt = Type.Optional;
@@ -85,69 +76,7 @@ const Commands = Type.Object({
   response_length: opt(oneOf("Set the length of the response to be returned.", "short", "medium", "long")),
 });
 
-// ② Conversation input ↔ ext/web-search/src/history.rs (recent_input)
-//    + tools/src/response_history.rs (retain_tail_from_last_n_user_messages, truncate_assistant_output_text_to_token_budget)
-
-const USER_MESSAGE_COUNT = 2;
-const ASSISTANT_CONTEXT_TOKEN_LIMIT = 1_000;
-
-// codex_utils_output_truncation::approx_token_count: utf-8 bytes / 4
-const approxTokens = (s: string) => Math.ceil(Buffer.byteLength(s) / 4);
-
-function textOf(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
-  return content.filter((c) => c?.type === "text").map((c) => c.text).join("\n");
-}
-
-function recentInput(branch: any[]) {
-  const messages = branch
-    .filter((e) => e?.type === "message" && (e.message?.role === "user" || e.message?.role === "assistant"))
-    .map((e) => ({ role: e.message.role as "user" | "assistant", text: textOf(e.message.content).trim() }))
-    .filter((m) => m.text);
-
-  // retain_tail_from_last_n_user_messages
-  const users = messages.flatMap((m, i) => (m.role === "user" ? [i] : []));
-  if (!users.length) return undefined;
-  const tail = messages.slice(users.at(-USER_MESSAGE_COUNT) ?? users[0], users.at(-1)! + 1);
-
-  // truncate_assistant_output_text_to_token_budget: one budget shared by all assistant text, in order
-  let budget = ASSISTANT_CONTEXT_TOKEN_LIMIT;
-  const items = tail.flatMap(({ role, text }) => {
-    if (role === "assistant") {
-      if (budget === 0) return [];
-      const tokens = approxTokens(text);
-      if (tokens > budget) text = Buffer.from(text).subarray(0, budget * 4).toString().replace(/�+$/, "") + "…";
-      budget = Math.max(0, budget - tokens);
-    }
-    const type = role === "user" ? "input_text" : "output_text";
-    return [{ type: "message", role, content: [{ type, text }] }];
-  });
-  return items.length ? items : undefined;
-}
-
-// ③ Settings ↔ ext/web-search/src/extension.rs (search_settings, external_web_access_for_mode)
-
-function searchSettings(mode: string) {
-  return {
-    allowed_callers: ["direct"],
-    external_web_access: mode === "live" ? true : mode === "indexed" ? "indexed" : false,
-  };
-}
-
-// ④ Request and errors ↔ ext/web-search/src/tool.rs (handle_call, search_error_message)
-//    + codex-api/src/endpoint/search.rs (POST alpha/search, SearchResponse)
-
-const MAX_OUTPUT_TOKENS = 10_000; // call.truncation_policy.token_budget(): every model in models.json is tokens/10000
-const MAX_SEARCH_ERROR_BYTES = 1024;
-const REQUEST_TIMEOUT_MS = 60_000; // pi-only guard; Codex relies on its HTTP client defaults
-
-function searchErrorMessage(message: string): string {
-  if (Buffer.byteLength(message) <= MAX_SEARCH_ERROR_BYTES) return message;
-  const suffix = "… [truncated]";
-  const head = Buffer.from(message).subarray(0, MAX_SEARCH_ERROR_BYTES - Buffer.byteLength(suffix));
-  return head.toString().replace(/�+$/, "") + suffix;
-}
+// Request ↔ codex-api/src/endpoint/search.rs
 
 function accountId(jwt: string): string | undefined {
   try {
@@ -160,26 +89,15 @@ function accountId(jwt: string): string | undefined {
 
 async function search(ctx: any, commands: object, signal: AbortSignal | undefined) {
   const registry = ctx.modelRegistry;
+  // The model supplies auth and baseUrl; the server requires `model` but currently ignores its value.
   const model =
-    (ctx.model?.provider === PROVIDER ? ctx.model : undefined) ??
-    (process.env.PI_WEB_MODEL ? registry.find(PROVIDER, process.env.PI_WEB_MODEL) : undefined) ??
-    registry.getAvailable().find((m: any) => m.provider === PROVIDER);
+    ctx.model?.provider === PROVIDER ? ctx.model : registry.getAvailable().find((m: any) => m.provider === PROVIDER);
   if (!model) throw new Error(`No ${PROVIDER} model available. Run /login ${PROVIDER}.`);
   const auth = await registry.getApiKeyAndHeaders(model);
   if (!auth.ok || !auth.apiKey) throw new Error(`No ${PROVIDER} credentials. Run /login ${PROVIDER}.`);
 
-  const input = recentInput(ctx.sessionManager.getBranch());
-  const request = {
-    id: ctx.sessionManager.getSessionId(),
-    model: model.id,
-    ...(input && { input }),
-    commands,
-    settings: searchSettings(process.env.PI_WEB_MODE ?? "live"),
-    max_output_tokens: MAX_OUTPUT_TOKENS,
-  };
-
   const account = accountId(auth.apiKey);
-  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const timeout = AbortSignal.timeout(60_000);
   const res = await fetch(`${(auth.baseUrl ?? model.baseUrl).replace(/\/+$/, "")}/codex/alpha/search`, {
     method: "POST",
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
@@ -190,51 +108,41 @@ async function search(ctx: any, commands: object, signal: AbortSignal | undefine
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify(request),
+    body: JSON.stringify({
+      id: ctx.sessionManager.getSessionId(),
+      model: model.id,
+      commands,
+      settings: { allowed_callers: ["direct"], external_web_access: true }, // live fetch
+      max_output_tokens: 10_000,
+    }),
   });
   const body = await res.text();
-  if (!res.ok) throw new Error(searchErrorMessage(`unexpected status ${res.status}: ${body}`));
-  try {
-    return JSON.parse(body) as { output: string; results?: any[] };
-  } catch (err) {
-    throw new Error(searchErrorMessage(`failed to decode search response: ${err}`));
-  }
+  if (!res.ok) throw new Error(`web search failed (${res.status}): ${body.slice(0, 1000)}`);
+  return JSON.parse(body) as { output?: string; results?: { title?: string; url?: string; ref_id?: string }[] };
 }
 
-// ⑤ pi tool registration and rendering (pi-only)
+// pi tool
 
-interface Details {
-  action: string;
-  sources: { title?: string; url?: string; ref_id?: string }[];
-}
+type Source = { title?: string; url?: string; ref_id?: string };
 
-/** Short label for the call, after tool.rs command_action: queries, else opened URL, else find pattern. */
+/** Short label for the call: first query, URL or find pattern. */
 function describe(p: any): string {
-  const qs: string[] = (p.search_query ?? p.image_query)?.map((x: any) => x.q) ?? [];
-  if (qs.length) return qs.length > 1 ? `${qs[0]} …` : qs[0];
-  const isUrl = (s?: string) => /^https?:\/\//.test(s ?? "");
-  if (isUrl(p.open?.[0]?.ref_id)) return p.open[0].ref_id;
-  const f = p.find?.[0];
-  if (f) return isUrl(f.ref_id) ? `'${f.pattern}' in ${f.ref_id}` : `'${f.pattern}'`;
-  return Object.keys(p).filter((k) => k !== "response_length").join(", ");
+  const first = p.search_query?.[0]?.q ?? p.image_query?.[0]?.q ?? p.open?.[0]?.ref_id ?? p.find?.[0]?.pattern;
+  return first ?? Object.keys(p).filter((k) => k !== "response_length").join(", ");
 }
 
 export default function (pi: ExtensionAPI) {
-  pi.registerTool<typeof Commands, Details>({
+  pi.registerTool<typeof Commands, { sources: Source[] }>({
     name: "web",
     label: "web",
     description: DESCRIPTION,
     parameters: Commands,
     executionMode: "parallel",
 
-    async execute(_id, params, signal, onUpdate, ctx) {
-      const action = describe(params);
-      onUpdate?.({ content: [{ type: "text", text: `web: ${action}` }], details: { action, sources: [] } });
+    async execute(_id, params, signal, _onUpdate, ctx) {
       const { output, results } = await search(ctx, params, signal);
-      const sources = (results ?? [])
-        .filter((r) => r?.url)
-        .map(({ title, url, ref_id }) => ({ title, url, ref_id }));
-      return { content: [{ type: "text", text: output ?? "" }], details: { action, sources } };
+      const sources = (results ?? []).filter((r) => r?.url).map(({ title, url, ref_id }) => ({ title, url, ref_id }));
+      return { content: [{ type: "text", text: output ?? "" }], details: { sources } };
     },
 
     renderCall(args, theme) {
@@ -242,11 +150,11 @@ export default function (pi: ExtensionAPI) {
     },
 
     renderResult(result, { expanded }, theme) {
-      const d = result.details;
-      if (!d) return new Text("", 0, 0);
-      const head = theme.fg("muted", `${d.sources.length} sources · ${textOf(result.content).length} chars`);
+      const sources = result.details?.sources ?? [];
+      const text = result.content.map((c) => (c.type === "text" ? c.text : "")).join("");
+      const head = theme.fg("muted", `${sources.length} sources · ${text.length} chars`);
       if (!expanded) return new Text(head, 0, 0);
-      const lines = d.sources
+      const lines = sources
         .slice(0, 15)
         .map((s) => `  ${theme.fg("dim", s.ref_id ?? "")} ${s.title ?? ""} ${theme.fg("muted", s.url ?? "")}`);
       return new Text([head, ...lines].join("\n"), 0, 0);
