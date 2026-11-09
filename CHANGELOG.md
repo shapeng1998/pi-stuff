@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.4] - 2026-11-09
+
+- `web`: failed calls show the error message in the terminal instead of `0 sources`.
+- `web`: account id extraction follows pi's own `extractAccountId`; `search()` takes the typed commands.
+
 ## [0.5.3] - 2026-11-09
 
 - `web`: parameter schema written in plain TypeBox with pi's `StringEnum`; same parameters, ~400 bytes smaller.

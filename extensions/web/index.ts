@@ -166,14 +166,20 @@ function accountId(jwt: string): string {
       'https://api.openai.com/auth'?: { chatgpt_account_id?: string };
     };
     const id = claims['https://api.openai.com/auth']?.chatgpt_account_id;
-    if (id) return id;
-  } catch {}
-  throw new Error(`No ChatGPT account id in the ${PROVIDER} token. Run /login ${PROVIDER}.`);
+    if (!id) throw new Error('missing');
+    return id;
+  } catch {
+    throw new Error(`No ChatGPT account id in the ${PROVIDER} token. Run /login ${PROVIDER}.`);
+  }
 }
 
 type Source = { title?: string; url?: string; ref_id?: string };
 
-async function search(ctx: ExtensionContext, commands: object, signal: AbortSignal | undefined) {
+async function search(
+  ctx: ExtensionContext,
+  commands: Static<typeof Commands>,
+  signal: AbortSignal | undefined,
+) {
   const registry = ctx.modelRegistry;
   // The model supplies auth and baseUrl; the server requires `model` but currently ignores its value.
   const models = registry.getAvailable().filter((m) => m.provider === PROVIDER);
@@ -249,10 +255,10 @@ export default function (pi: ExtensionAPI) {
       );
     },
 
-    renderResult(result, { expanded }, theme) {
-      // A thrown error arrives with `details: {}`.
-      const sources = result.details.sources ?? [];
+    renderResult(result, { expanded }, theme, context) {
       const text = result.content.map((c) => (c.type === 'text' ? c.text : '')).join('');
+      if (context.isError) return new Text(theme.fg('error', text), 0, 0);
+      const { sources } = result.details;
       const head = theme.fg('muted', `${sources.length} sources · ${text.length} chars`);
       if (!expanded) return new Text(head, 0, 0);
       const lines = sources
