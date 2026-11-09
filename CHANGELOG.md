@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.3] - 2026-11-09
+
+- `web`: parameter schema written in plain TypeBox with pi's `StringEnum`; same parameters, ~400 bytes smaller.
+
 ## [0.5.2] - 2026-11-09
 
 - `web`: fail with a clear error when the response has no `output` or the token has no ChatGPT account id, instead of continuing silently.

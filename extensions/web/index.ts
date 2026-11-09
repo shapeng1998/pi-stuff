@@ -9,9 +9,10 @@
  *
  * Derived parts © 2025 OpenAI, Apache-2.0; see THIRD_PARTY_NOTICES.md.
  */
+import { StringEnum } from '@earendil-works/pi-ai';
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { Text } from '@earendil-works/pi-tui';
-import { Type, type Static, type TSchema } from 'typebox';
+import { Type, type Static } from 'typebox';
 
 const PROVIDER = 'openai-codex';
 const DESCRIPTION = `Tool for accessing the internet. Put several commands in one call to get results faster.
@@ -20,77 +21,139 @@ Reference ids like \`turn0search0\` are for calls to this tool only. Cite source
 
 // Commands schema ↔ codex-api/src/search.rs
 
-const d = <T extends TSchema>(description: string, schema: T) => ({ ...schema, description }) as T;
-const opt = Type.Optional;
-const str = (description: string) => d(description, Type.String());
-const uint = (description: string) => d(description, Type.Integer({ minimum: 0 }));
-const oneOf = (description: string, ...values: string[]) =>
-  d(description, Type.Union(values.map((v) => Type.Literal(v))));
-const list = <T extends Record<string, TSchema>>(description: string, item: T) =>
-  opt(d(description, Type.Array(Type.Object(item))));
-
-const SearchQuery = {
-  q: str('Search query.'),
-  recency: opt(uint('Whether to filter by recency, as a number of recent days.')),
-  domains: opt(d('Whether to filter by a specific list of domains.', Type.Array(Type.String()))),
-};
+const SearchQuery = Type.Object({
+  q: Type.String({ description: 'Search query.' }),
+  recency: Type.Optional(
+    Type.Integer({
+      minimum: 0,
+      description: 'Whether to filter by recency, as a number of recent days.',
+    }),
+  ),
+  domains: Type.Optional(
+    Type.Array(Type.String(), { description: 'Whether to filter by a specific list of domains.' }),
+  ),
+});
 
 const Commands = Type.Object({
-  search_query: list('Query the internet search engine for a given list of queries.', SearchQuery),
-  image_query: list('Query the image search engine for a given list of queries.', SearchQuery),
-  open: list('Open pages by reference id or URL.', {
-    ref_id: str('Reference id or URL to open.'),
-    lineno: opt(uint('Line number to position the page at.')),
-  }),
-  click: list('Open links from previously opened pages.', {
-    ref_id: str('Reference id containing the numbered link.'),
-    id: uint('Numbered link id to open.'),
-  }),
-  find: list('Find text patterns in pages.', {
-    ref_id: str('Reference id or URL to search within.'),
-    pattern: str('Text pattern to find.'),
-  }),
-  screenshot: list('Take screenshots of PDF pages.', {
-    ref_id: str('Reference id or URL to screenshot.'),
-    pageno: uint('Zero-indexed PDF page number.'),
-  }),
-  finance: list('Look up prices for the given stock symbols.', {
-    ticker: str('Ticker symbol to look up.'),
-    type: oneOf('Asset type to look up.', 'equity', 'fund', 'crypto', 'index'),
-    market: opt(str('ISO 3166-1 alpha-3 country code, "OTC", or "" for cryptocurrency.')),
-  }),
-  weather: list('Look up weather forecasts.', {
-    location: str('Location in "Country, Area, City" format.'),
-    start: opt(str('Start date in YYYY-MM-DD format. Defaults to today.')),
-    duration: opt(uint('Number of days to return. Defaults to 7.')),
-  }),
-  sports: list('Look up sports schedules and standings.', {
-    tool: opt(oneOf('Tool name for sports requests.', 'sports')),
-    fn: oneOf('Sports function to call.', 'schedule', 'standings'),
-    league: oneOf(
-      'League to look up.',
-      'nba',
-      'wnba',
-      'nfl',
-      'nhl',
-      'mlb',
-      'epl',
-      'ncaamb',
-      'ncaawb',
-      'ipl',
+  search_query: Type.Optional(
+    Type.Array(SearchQuery, {
+      description: 'Query the internet search engine for a given list of queries.',
+    }),
+  ),
+  image_query: Type.Optional(
+    Type.Array(SearchQuery, {
+      description: 'Query the image search engine for a given list of queries.',
+    }),
+  ),
+  open: Type.Optional(
+    Type.Array(
+      Type.Object({
+        ref_id: Type.String({ description: 'Reference id or URL to open.' }),
+        lineno: Type.Optional(
+          Type.Integer({ minimum: 0, description: 'Line number to position the page at.' }),
+        ),
+      }),
+      { description: 'Open pages by reference id or URL.' },
     ),
-    team: opt(str('Team to look up, using the common 3 or 4 letter alias used in broadcasts.')),
-    opponent: opt(str('Opponent to use with `team` when narrowing the lookup.')),
-    date_from: opt(str('Start date in YYYY-MM-DD format.')),
-    date_to: opt(str('End date in YYYY-MM-DD format.')),
-    num_games: opt(uint('Number of games to return.')),
-    locale: opt(str('Locale for the lookup.')),
-  }),
-  time: list('Get time for the given UTC offsets.', {
-    utc_offset: str('UTC offset formatted like "+03:00".'),
-  }),
-  response_length: opt(
-    oneOf('Set the length of the response to be returned.', 'short', 'medium', 'long'),
+  ),
+  click: Type.Optional(
+    Type.Array(
+      Type.Object({
+        ref_id: Type.String({ description: 'Reference id containing the numbered link.' }),
+        id: Type.Integer({ minimum: 0, description: 'Numbered link id to open.' }),
+      }),
+      { description: 'Open links from previously opened pages.' },
+    ),
+  ),
+  find: Type.Optional(
+    Type.Array(
+      Type.Object({
+        ref_id: Type.String({ description: 'Reference id or URL to search within.' }),
+        pattern: Type.String({ description: 'Text pattern to find.' }),
+      }),
+      { description: 'Find text patterns in pages.' },
+    ),
+  ),
+  screenshot: Type.Optional(
+    Type.Array(
+      Type.Object({
+        ref_id: Type.String({ description: 'Reference id or URL to screenshot.' }),
+        pageno: Type.Integer({ minimum: 0, description: 'Zero-indexed PDF page number.' }),
+      }),
+      { description: 'Take screenshots of PDF pages.' },
+    ),
+  ),
+  finance: Type.Optional(
+    Type.Array(
+      Type.Object({
+        ticker: Type.String({ description: 'Ticker symbol to look up.' }),
+        type: StringEnum(['equity', 'fund', 'crypto', 'index'], {
+          description: 'Asset type to look up.',
+        }),
+        market: Type.Optional(
+          Type.String({
+            description: 'ISO 3166-1 alpha-3 country code, "OTC", or "" for cryptocurrency.',
+          }),
+        ),
+      }),
+      { description: 'Look up prices for the given stock symbols.' },
+    ),
+  ),
+  weather: Type.Optional(
+    Type.Array(
+      Type.Object({
+        location: Type.String({ description: 'Location in "Country, Area, City" format.' }),
+        start: Type.Optional(
+          Type.String({ description: 'Start date in YYYY-MM-DD format. Defaults to today.' }),
+        ),
+        duration: Type.Optional(
+          Type.Integer({ minimum: 0, description: 'Number of days to return. Defaults to 7.' }),
+        ),
+      }),
+      { description: 'Look up weather forecasts.' },
+    ),
+  ),
+  sports: Type.Optional(
+    Type.Array(
+      Type.Object({
+        tool: Type.Optional(
+          StringEnum(['sports'], { description: 'Tool name for sports requests.' }),
+        ),
+        fn: StringEnum(['schedule', 'standings'], { description: 'Sports function to call.' }),
+        league: StringEnum(['nba', 'wnba', 'nfl', 'nhl', 'mlb', 'epl', 'ncaamb', 'ncaawb', 'ipl'], {
+          description: 'League to look up.',
+        }),
+        team: Type.Optional(
+          Type.String({
+            description:
+              'Team to look up, using the common 3 or 4 letter alias used in broadcasts.',
+          }),
+        ),
+        opponent: Type.Optional(
+          Type.String({ description: 'Opponent to use with `team` when narrowing the lookup.' }),
+        ),
+        date_from: Type.Optional(Type.String({ description: 'Start date in YYYY-MM-DD format.' })),
+        date_to: Type.Optional(Type.String({ description: 'End date in YYYY-MM-DD format.' })),
+        num_games: Type.Optional(
+          Type.Integer({ minimum: 0, description: 'Number of games to return.' }),
+        ),
+        locale: Type.Optional(Type.String({ description: 'Locale for the lookup.' })),
+      }),
+      { description: 'Look up sports schedules and standings.' },
+    ),
+  ),
+  time: Type.Optional(
+    Type.Array(
+      Type.Object({
+        utc_offset: Type.String({ description: 'UTC offset formatted like "+03:00".' }),
+      }),
+      { description: 'Get time for the given UTC offsets.' },
+    ),
+  ),
+  response_length: Type.Optional(
+    StringEnum(['short', 'medium', 'long'], {
+      description: 'Set the length of the response to be returned.',
+    }),
   ),
 });
 
