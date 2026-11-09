@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.2] - 2026-11-09
+
+- `web`: fail with a clear error when the response has no `output` or the token has no ChatGPT account id, instead of continuing silently.
+- Tooling: oxfmt (single quotes) and oxlint with type-aware rules and type checking replace `tsc`; `AGENTS.md` gains code conventions adapted from pi.
+
 ## [0.5.1] - 2026-11-08
 
 - `web`: errors truncated to 1024 characters again, as documented in 0.3.0.

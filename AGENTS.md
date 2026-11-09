@@ -15,6 +15,16 @@ Conventional directories, auto-discovered by pi (no `pi` manifest); create one w
 
 - Host packages (`@earendil-works/pi-*`, `typebox`) go in `peerDependencies` with `"*"` only, never in `dependencies`. They are installed as `devDependencies` for type checking.
 - Other runtime imports go in `dependencies`.
-- Run `pnpm check` after changing extensions; test in pi with `/reload`.
+- After changing extensions, run `pnpm fmt` and `pnpm check` (oxfmt, then oxlint with type-aware rules and type checking); test in pi with `/reload`.
 - For user-visible changes, bump `version` in `package.json` and add a `CHANGELOG.md` entry (`## [x.y.z] - YYYY-MM-DD`), so other machines see "Extension Updates".
 - Add a short `README.md` section for every new extension, skill, prompt or theme. Credit derived third-party code in `THIRD_PARTY_NOTICES.md`.
+
+## Code
+
+Adapted from pi's `AGENTS.md` and `docs/extensions.md`; pi's `examples/extensions/` are the reference for extension APIs.
+
+- No `any` unless unavoidable. Look up external API types in `node_modules`; don't guess.
+- Validate only at trust boundaries (HTTP responses, tokens, JSON files): give the data a type with optional fields, cast once where it is parsed, and check the values you use. No runtime checks of values TypeScript already guarantees.
+- Keep tool output bounded (pi's limit is 50KB / 2000 lines); report failures by throwing.
+- Comments explain why, not what. Inline single-line helpers that have one call site.
+- Ask before removing functionality that looks intentional. Don't keep code for backward compatibility unless asked.
