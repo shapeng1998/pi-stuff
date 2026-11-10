@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.5] - 2026-11-10
+
+- `web`: each call is shown as one Codex-style line (`Searched the web for …`, `Opened …`, `Searched for '…'`), cut to the terminal width; the result shows only its size or the error. Sources are no longer listed or stored in session details.
+
 ## [0.5.4] - 2026-11-09
 
 - `web`: failed calls show the error message in the terminal instead of `0 sources`.

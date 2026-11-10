@@ -11,7 +11,7 @@
  */
 import { StringEnum } from '@earendil-works/pi-ai';
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
-import { Text } from '@earendil-works/pi-tui';
+import { Text, truncateToWidth } from '@earendil-works/pi-tui';
 import { Type, type Static } from 'typebox';
 
 const PROVIDER = 'openai-codex';
@@ -173,8 +173,6 @@ function accountId(jwt: string): string {
   }
 }
 
-type Source = { title?: string; url?: string; ref_id?: string };
-
 async function search(
   ctx: ExtensionContext,
   commands: Static<typeof Commands>,
@@ -211,28 +209,31 @@ async function search(
   });
   const body = await res.text();
   if (!res.ok) throw new Error(`web search failed (${res.status}): ${body.slice(0, 1024)}`);
-  const data = JSON.parse(body) as { output?: string; results?: Source[] };
+  const data = JSON.parse(body) as { output?: string };
   if (typeof data.output !== 'string')
     throw new Error(`web search returned no output: ${body.slice(0, 1024)}`);
-  return { output: data.output, results: data.results ?? [] };
+  return data.output;
 }
 
 // pi tool
 
-/** Short label for the call: first query, URL or find pattern. */
-function describe(p: Static<typeof Commands>): string {
-  const first =
-    p.search_query?.[0]?.q ?? p.image_query?.[0]?.q ?? p.open?.[0]?.ref_id ?? p.find?.[0]?.pattern;
-  return (
-    first ??
-    Object.keys(p)
-      .filter((k) => k !== 'response_length')
-      .join(', ')
-  );
+/** One-line summary of a call, following Codex's TUI (ext/web-search/src/tool.rs, tui/src/history_cell/search.rs). */
+function summary(p: Static<typeof Commands>): [header: string, detail: string] {
+  const queries = [p.search_query, p.image_query].find((q) => q?.length);
+  if (queries) return ['Searched the web for', queries.map((q) => q.q).join(', ')];
+  const open = p.open?.at(0)?.ref_id;
+  if (open && URL.canParse(open)) return ['Opened', open];
+  const find = p.find?.at(0);
+  if (find)
+    return [
+      'Searched for',
+      `'${find.pattern}'${URL.canParse(find.ref_id) ? ` in ${find.ref_id}` : ''}`,
+    ];
+  return ['Searched the web', ''];
 }
 
 export default function (pi: ExtensionAPI) {
-  pi.registerTool<typeof Commands, { sources: Source[] }>({
+  pi.registerTool({
     name: 'web',
     label: 'web',
     description: DESCRIPTION,
@@ -240,34 +241,25 @@ export default function (pi: ExtensionAPI) {
     executionMode: 'parallel',
 
     async execute(_id, params, signal, _onUpdate, ctx) {
-      const { output, results } = await search(ctx, params, signal);
-      const sources = results
-        .filter((r) => r.url)
-        .map(({ title, url, ref_id }) => ({ title, url, ref_id }));
-      return { content: [{ type: 'text', text: output }], details: { sources } };
+      const output = await search(ctx, params, signal);
+      return { content: [{ type: 'text', text: output }], details: {} };
     },
 
     renderCall(args, theme) {
+      const [header, detail] = summary(args);
+      const rest = detail ? ` ${theme.fg('accent', detail.replace(/[\n\r\t]/g, ' '))}` : '';
+      const line = theme.fg('toolTitle', theme.bold(header)) + rest;
+      // One line like Codex: cut at the terminal width instead of wrapping.
+      return { render: (width) => [truncateToWidth(line, width, '…')], invalidate() {} };
+    },
+
+    renderResult(result, _options, theme, context) {
+      const text = result.content.map((c) => (c.type === 'text' ? c.text : '')).join('');
       return new Text(
-        theme.fg('toolTitle', theme.bold('web ')) + theme.fg('accent', describe(args)),
+        context.isError ? theme.fg('error', text) : theme.fg('muted', `${text.length} chars`),
         0,
         0,
       );
-    },
-
-    renderResult(result, { expanded }, theme, context) {
-      const text = result.content.map((c) => (c.type === 'text' ? c.text : '')).join('');
-      if (context.isError) return new Text(theme.fg('error', text), 0, 0);
-      const { sources } = result.details;
-      const head = theme.fg('muted', `${sources.length} sources · ${text.length} chars`);
-      if (!expanded) return new Text(head, 0, 0);
-      const lines = sources
-        .slice(0, 15)
-        .map(
-          (s) =>
-            `  ${theme.fg('dim', s.ref_id ?? '')} ${s.title ?? ''} ${theme.fg('muted', s.url ?? '')}`,
-        );
-      return new Text([head, ...lines].join('\n'), 0, 0);
     },
   });
 }
