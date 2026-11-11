@@ -11,10 +11,7 @@
   "type": "module",
   "scripts": {
     "check": "oxfmt --check && oxlint",
-    "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check",
-    "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "fmt": "oxfmt"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "^1.5.0",
