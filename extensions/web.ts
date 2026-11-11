@@ -186,11 +186,13 @@ async function search(
       max_output_tokens: 10_000,
     }),
   });
+
   const body = await res.text();
   if (!res.ok) throw new Error(`web search failed (${res.status}): ${body.slice(0, 1024)}`);
   const data = JSON.parse(body) as { output?: string };
   if (typeof data.output !== 'string')
     throw new Error(`web search returned no output: ${body.slice(0, 1024)}`);
+
   return data.output;
 }
 
@@ -200,14 +202,17 @@ async function search(
 function summary(p: Static<typeof Commands>): [header: string, detail: string] {
   const queries = [p.search_query, p.image_query].find((q) => q?.length);
   if (queries) return ['Searched the web for', queries.map((q) => q.q).join(', ')];
+
   const open = p.open?.at(0)?.ref_id;
   if (open && URL.canParse(open)) return ['Opened', open];
+
   const find = p.find?.at(0);
   if (find)
     return [
       'Searched for',
       `'${find.pattern}'${URL.canParse(find.ref_id) ? ` in ${find.ref_id}` : ''}`,
     ];
+
   return ['Searched the web', ''];
 }
 
@@ -228,10 +233,12 @@ export default function (pi: ExtensionAPI) {
       const [header, detail] = summary(args);
       const title = theme.fg('toolTitle', theme.bold(header));
       const text = detail.replace(/[\n\r\t]/g, ' ');
+
       // Like Codex: one cut line in the main view, the whole summary wrapped when expanded
       // (Codex's transcript view).
       if (context.expanded)
         return new Text(text ? `${title} ${theme.fg('accent', text)}` : title, 0, 0);
+
       return {
         // The detail is cut here, with the ellipsis inside its color, because truncateToWidth()
         // resets all styles before its ellipsis, which drops the color and the tool box

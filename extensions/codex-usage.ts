@@ -35,6 +35,7 @@ async function fetchUsage(ctx: ExtensionContext): Promise<{ plan?: string; limit
       Accept: 'application/json',
     },
   });
+
   const body = await res.text();
   if (!res.ok) throw new Error(`Codex usage failed (${res.status}): ${body.slice(0, 1024)}`);
   const data = JSON.parse(body) as Usage;
@@ -49,6 +50,7 @@ async function fetchUsage(ctx: ExtensionContext): Promise<{ plan?: string; limit
       resetAt: new Date(w.reset_at * 1000),
     });
   }
+
   if (!limits.length) throw new Error(`Codex usage has no rate limits: ${body.slice(0, 1024)}`);
   return { plan: data.plan_type, limits };
 }
@@ -92,16 +94,20 @@ export default function (pi: ExtensionAPI) {
     FooterComponent.prototype.render = function (width) {
       const lines = originalRender.call(this, width);
       if (!limits) return lines;
+
       const text = render(ctx.ui.theme, limits);
       const gap = width - visibleWidth(lines[0]) - visibleWidth(text);
       if (gap >= 2) lines[0] += ' '.repeat(gap) + text;
       return lines;
     };
+
     void refresh(ctx);
   });
+
   pi.on('session_shutdown', () => {
     FooterComponent.prototype.render = originalRender;
   });
+
   pi.on('agent_settled', (_event, ctx) => {
     if (ctx.mode === 'tui') void refresh(ctx);
   });
@@ -112,6 +118,7 @@ export default function (pi: ExtensionAPI) {
       try {
         const usage = await fetchUsage(ctx);
         show(ctx, usage.limits);
+
         const lines = usage.limits.map(
           (l) => `${l.label}: ${Math.round(l.left)}% left, resets ${formatReset(l.resetAt)}`,
         );
