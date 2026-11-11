@@ -12,7 +12,7 @@
  */
 import { StringEnum } from '@earendil-works/pi-ai';
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
-import { Text, TruncatedText } from '@earendil-works/pi-tui';
+import { Text, sliceByColumn, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui';
 import { Type, type Static } from 'typebox';
 import { codexCredentials } from '../lib/codex.ts';
 
@@ -224,12 +224,27 @@ export default function (pi: ExtensionAPI) {
       return { content: [{ type: 'text', text: output }], details: {} };
     },
 
-    renderCall(args, theme) {
+    renderCall(args, theme, context) {
       const [header, detail] = summary(args);
-      const rest = detail ? ` ${theme.fg('accent', detail.replace(/[\n\r\t]/g, ' '))}` : '';
-      const line = theme.fg('toolTitle', theme.bold(header)) + rest;
-      // One line like Codex: cut at the terminal width instead of wrapping.
-      return new TruncatedText(line);
+      const title = theme.fg('toolTitle', theme.bold(header));
+      const text = detail.replace(/[\n\r\t]/g, ' ');
+      // Like Codex: one cut line in the main view, the whole summary wrapped when expanded
+      // (Codex's transcript view).
+      if (context.expanded)
+        return new Text(text ? `${title} ${theme.fg('accent', text)}` : title, 0, 0);
+      return {
+        // The detail is cut here, with the ellipsis inside its color, because truncateToWidth()
+        // resets all styles before its ellipsis, which drops the color and the tool box
+        // background there; it only guards terminals narrower than the header.
+        render: (width) => {
+          const room = width - visibleWidth(header) - 1;
+          const cut =
+            visibleWidth(text) > room ? `${sliceByColumn(text, 0, room - 3, true)}...` : text;
+          const line = cut ? `${title} ${theme.fg('accent', cut)}` : title;
+          return [truncateToWidth(line, width, '')];
+        },
+        invalidate() {},
+      };
     },
 
     renderResult(result, _options, theme, context) {

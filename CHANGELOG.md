@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.2] - 2026-11-11
+
+- `web`: expanding tool output (Ctrl+O) shows the whole call line, wrapped, like Codex's transcript view.
+- `web`: the `...` of a cut call line has the detail's color and the tool box background; in 0.6.1 both stopped before it.
+
 ## [0.6.1] - 2026-11-11
 
 - `web` and `codex-usage` share the Codex credentials lookup (`lib/codex.ts`) and call `https://chatgpt.com/backend-api` directly; a custom `openai-codex` base URL is no longer used.
