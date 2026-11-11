@@ -5,7 +5,8 @@
  *   - Commands ↔ https://github.com/openai/codex/commits/main/codex-rs/codex-api/src/search.rs
  *   - search() ↔ https://github.com/openai/codex/commits/main/codex-rs/codex-api/src/endpoint/search.rs
  * To sync: check those histories for commits after the baseline, apply, then bump the baseline.
- * Everything else is our own.
+ * The one-line call summary also takes its wording from Codex's TUI (see summary()), not kept in
+ * sync. Everything else is our own.
  *
  * Derived parts © 2025 OpenAI, Apache-2.0; see THIRD_PARTY_NOTICES.md.
  */

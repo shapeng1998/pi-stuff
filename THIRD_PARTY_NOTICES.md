@@ -2,9 +2,11 @@
 
 ## OpenAI Codex
 
-`extensions/web/index.ts` contains material derived from [OpenAI Codex](https://github.com/openai/codex):
+`extensions/web.ts` contains material derived from [OpenAI Codex](https://github.com/openai/codex):
 the `Commands` schema and its field descriptions follow `codex-rs/codex-api/src/search.rs`,
-and the request follows `codex-rs/codex-api/src/endpoint/search.rs`.
+the request follows `codex-rs/codex-api/src/endpoint/search.rs`,
+and the one-line call summary takes its wording from `codex-rs/ext/web-search/src/tool.rs`
+and `codex-rs/tui/src/history_cell/search.rs`.
 That material is licensed under the Apache License 2.0, reproduced below.
 
 ```

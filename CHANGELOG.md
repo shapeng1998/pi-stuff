@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.0] - 2026-11-11
+
+- New `codex-usage` extension: remaining Codex 5h and weekly limits right-aligned on the first footer line (`5h:77% 7d:39%`), refreshed at session start and after each run; below 20% a window turns yellow, below 5% red. `/codex-usage` refreshes and shows plan and reset times.
+- `web`: moved from `extensions/web/index.ts` to `extensions/web.ts`, following pi's single-file style.
+
 ## [0.5.5] - 2026-11-10
 
 - `web`: each call is shown as one Codex-style line (`Searched the web for …`, `Opened …`, `Searched for '…'`), cut to the terminal width; the result shows only its size or the error. Sources are no longer listed or stored in session details.
