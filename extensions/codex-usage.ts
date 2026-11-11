@@ -1,5 +1,5 @@
 /**
- * codex-usage: remaining Codex (ChatGPT subscription) rate limits in the footer, plus `/codex-usage`.
+ * codex-usage: remaining Codex (ChatGPT subscription) rate limits in the footer.
  *
  * Reads `GET https://chatgpt.com/backend-api/wham/usage`, the endpoint behind Codex's `/status`.
  * Undocumented, may change.
@@ -17,14 +17,11 @@ import {
 import { visibleWidth } from '@earendil-works/pi-tui';
 import { codexCredentials } from '../lib/codex.ts';
 
-type Window = { used_percent?: number; limit_window_seconds?: number; reset_at?: number };
-type Usage = {
-  plan_type?: string;
-  rate_limit?: { primary_window?: Window | null; secondary_window?: Window | null };
-};
-type Limit = { label: string; left: number; resetAt: Date };
+type Window = { used_percent?: number; limit_window_seconds?: number };
+type Usage = { rate_limit?: { primary_window?: Window | null; secondary_window?: Window | null } };
+type Limit = { label: string; left: number };
 
-async function fetchUsage(ctx: ExtensionContext): Promise<{ plan?: string; limits: Limit[] }> {
+async function fetchLimits(ctx: ExtensionContext): Promise<Limit[]> {
   const { apiKey, accountId } = await codexCredentials(ctx);
   const res = await fetch('https://chatgpt.com/backend-api/wham/usage', {
     signal: AbortSignal.timeout(30_000),
@@ -36,29 +33,20 @@ async function fetchUsage(ctx: ExtensionContext): Promise<{ plan?: string; limit
     },
   });
 
-  const body = await res.text();
-  if (!res.ok) throw new Error(`Codex usage failed (${res.status}): ${body.slice(0, 1024)}`);
-  const data = JSON.parse(body) as Usage;
+  if (!res.ok) throw new Error(`Codex usage failed (${res.status})`);
+  const data = (await res.json()) as Usage;
 
   const limits: Limit[] = [];
   for (const w of [data.rate_limit?.primary_window, data.rate_limit?.secondary_window]) {
-    if (w?.used_percent === undefined || !w.limit_window_seconds || !w.reset_at) continue;
+    if (w?.used_percent === undefined || !w.limit_window_seconds) continue;
     const hours = w.limit_window_seconds / 3600;
     limits.push({
       label: hours % 24 === 0 ? `${hours / 24}d` : `${Math.round(hours)}h`,
       left: Math.max(0, 100 - w.used_percent),
-      resetAt: new Date(w.reset_at * 1000),
     });
   }
 
-  if (!limits.length) throw new Error(`Codex usage has no rate limits: ${body.slice(0, 1024)}`);
-  return { plan: data.plan_type, limits };
-}
-
-function formatReset(d: Date): string {
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  if (d.getTime() - Date.now() < 24 * 3600_000) return time;
-  return `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+  return limits;
 }
 
 function render(theme: ExtensionContext['ui']['theme'], limits: Limit[]): string {
@@ -74,18 +62,14 @@ export default function (pi: ExtensionAPI) {
   // Called with the footer's `this` below, and put back on shutdown.
   // oxlint-disable-next-line typescript/unbound-method
   const originalRender = FooterComponent.prototype.render;
-  let limits: Limit[] | undefined;
+  let limits: Limit[] = [];
 
-  const show = (ctx: ExtensionContext, next: Limit[]) => {
-    limits = next;
-    // Clearing an unused status key is the only way for an extension to request a re-render.
-    ctx.ui.setStatus('codex-usage', undefined);
-  };
-
-  // Background refreshes keep the last value on failure; /codex-usage reports errors.
+  // Nothing reports a failure: the footer keeps the last value, or stays as pi draws it.
   const refresh = async (ctx: ExtensionContext) => {
     try {
-      show(ctx, (await fetchUsage(ctx)).limits);
+      limits = await fetchLimits(ctx);
+      // Clearing an unused status key is the only way for an extension to request a re-render.
+      ctx.ui.setStatus('codex-usage', undefined);
     } catch {}
   };
 
@@ -93,7 +77,7 @@ export default function (pi: ExtensionAPI) {
     if (ctx.mode !== 'tui') return;
     FooterComponent.prototype.render = function (width) {
       const lines = originalRender.call(this, width);
-      if (!limits) return lines;
+      if (!limits.length) return lines;
 
       const text = render(ctx.ui.theme, limits);
       const gap = width - visibleWidth(lines[0]) - visibleWidth(text);
@@ -110,25 +94,5 @@ export default function (pi: ExtensionAPI) {
 
   pi.on('agent_settled', (_event, ctx) => {
     if (ctx.mode === 'tui') void refresh(ctx);
-  });
-
-  pi.registerCommand('codex-usage', {
-    description: 'Show remaining Codex rate limits',
-    handler: async (_args, ctx) => {
-      try {
-        const usage = await fetchUsage(ctx);
-        show(ctx, usage.limits);
-
-        const lines = usage.limits.map(
-          (l) => `${l.label}: ${Math.round(l.left)}% left, resets ${formatReset(l.resetAt)}`,
-        );
-        ctx.ui.notify(
-          [`Codex${usage.plan ? ` (${usage.plan})` : ''}`, ...lines].join('\n'),
-          'info',
-        );
-      } catch (e) {
-        ctx.ui.notify(e instanceof Error ? e.message : String(e), 'error');
-      }
-    },
   });
 }

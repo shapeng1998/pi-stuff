@@ -25,7 +25,6 @@ Remaining Codex 5h and weekly limits on the right of the footer's first line, e.
 - Requires `/login openai-codex`; refreshed at session start and after each agent run.
 - Below 20% a window turns yellow, below 5% red.
 - Hidden when the first footer line (cwd, branch, session name) leaves no room.
-- `/codex-usage` refreshes now and shows the plan and both reset times.
 
 > Unofficial: reads the undocumented `/wham/usage` endpoint behind Codex's `/status`, and patches pi's built-in footer rendering, so a pi update may break the display.
 

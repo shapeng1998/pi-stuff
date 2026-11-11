@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.0] - 2026-11-11
+
+- `codex-usage`: the `/codex-usage` command is removed; the limits are shown in the footer only.
+
 ## [0.6.3] - 2026-11-11
 
 - `web`: finance, weather, sports and time calls are shown as `Looked up …` instead of a bare `Searched the web`.
