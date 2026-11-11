@@ -235,7 +235,7 @@ export default function (pi: ExtensionAPI) {
 
     async execute(_id, params, signal, _onUpdate, ctx) {
       const output = await search(ctx, params, signal);
-      return { content: [{ type: 'text', text: output }], details: {} };
+      return { content: [{ type: 'text', text: output }], details: undefined };
     },
 
     renderCall(args, theme, context) {
