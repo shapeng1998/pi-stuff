@@ -213,6 +213,15 @@ function summary(p: Static<typeof Commands>): [header: string, detail: string] {
       `'${find.pattern}'${URL.canParse(find.ref_id) ? ` in ${find.ref_id}` : ''}`,
     ];
 
+  // Codex shows a bare "Searched the web" for everything else; the lookups are our own.
+  const lookups = [
+    ...(p.finance ?? []).map((f) => f.ticker),
+    ...(p.weather ?? []).map((w) => `weather in ${w.location}`),
+    ...(p.sports ?? []).map((s) => [s.league, s.fn, s.team].filter(Boolean).join(' ')),
+    ...(p.time ?? []).map((t) => `time at UTC${t.utc_offset}`),
+  ];
+  if (lookups.length) return ['Looked up', lookups.join(', ')];
+
   return ['Searched the web', ''];
 }
 

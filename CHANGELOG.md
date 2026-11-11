@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.3] - 2026-11-11
+
+- `web`: finance, weather, sports and time calls are shown as `Looked up …` instead of a bare `Searched the web`.
+
 ## [0.6.2] - 2026-11-11
 
 - `web`: expanding tool output (Ctrl+O) shows the whole call line, wrapped, like Codex's transcript view.
