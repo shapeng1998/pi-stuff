@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.1] - 2026-11-11
+
+- `web` and `codex-usage` share the Codex credentials lookup (`lib/codex.ts`) and call `https://chatgpt.com/backend-api` directly; a custom `openai-codex` base URL is no longer used.
+- `web`: the call line is drawn by pi's `TruncatedText`, so a cut line ends in `...` instead of `…`.
+
 ## [0.6.0] - 2026-11-11
 
 - New `codex-usage` extension: remaining Codex 5h and weekly limits right-aligned on the first footer line (`5h:77% 7d:39%`), refreshed at session start and after each run; below 20% a window turns yellow, below 5% red. `/codex-usage` refreshes and shows plan and reset times.

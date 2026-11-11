@@ -12,10 +12,10 @@
  */
 import { StringEnum } from '@earendil-works/pi-ai';
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
-import { Text, truncateToWidth } from '@earendil-works/pi-tui';
+import { Text, TruncatedText } from '@earendil-works/pi-tui';
 import { Type, type Static } from 'typebox';
+import { codexCredentials } from '../lib/codex.ts';
 
-const PROVIDER = 'openai-codex';
 const DESCRIPTION = `Tool for accessing the internet. Put several commands in one call to get results faster.
 
 Reference ids like \`turn0search0\` are for calls to this tool only. Cite sources to the user as Markdown links to the supporting page.`;
@@ -160,49 +160,27 @@ const Commands = Type.Object({
 
 // Request ↔ codex-api/src/endpoint/search.rs
 
-// pi's openai-codex login rejects tokens without an account id, so a missing one means a broken login.
-function accountId(jwt: string): string {
-  try {
-    const claims = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString()) as {
-      'https://api.openai.com/auth'?: { chatgpt_account_id?: string };
-    };
-    const id = claims['https://api.openai.com/auth']?.chatgpt_account_id;
-    if (!id) throw new Error('missing');
-    return id;
-  } catch {
-    throw new Error(`No ChatGPT account id in the ${PROVIDER} token. Run /login ${PROVIDER}.`);
-  }
-}
-
 async function search(
   ctx: ExtensionContext,
   commands: Static<typeof Commands>,
   signal: AbortSignal | undefined,
 ) {
-  const registry = ctx.modelRegistry;
-  // The model supplies auth and baseUrl; the server requires `model` but currently ignores its value.
-  const models = registry.getAvailable().filter((m) => m.provider === PROVIDER);
-  const model = models.find((m) => m.id === ctx.model?.id) ?? models.at(0);
-  if (!model) throw new Error(`No ${PROVIDER} model available. Run /login ${PROVIDER}.`);
-  const auth = await registry.getApiKeyAndHeaders(model);
-  if (!auth.ok || !auth.apiKey)
-    throw new Error(`No ${PROVIDER} credentials. Run /login ${PROVIDER}.`);
-
-  const url = `${(auth.baseUrl ?? model.baseUrl).replace(/\/+$/, '')}/codex/alpha/search`;
+  const { apiKey, accountId } = await codexCredentials(ctx);
   const timeout = AbortSignal.timeout(60_000);
-  const res = await fetch(url, {
+  const res = await fetch('https://chatgpt.com/backend-api/codex/alpha/search', {
     method: 'POST',
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     headers: {
-      Authorization: `Bearer ${auth.apiKey}`,
-      'chatgpt-account-id': accountId(auth.apiKey),
+      Authorization: `Bearer ${apiKey}`,
+      'chatgpt-account-id': accountId,
       originator: 'pi',
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
     body: JSON.stringify({
       id: ctx.sessionManager.getSessionId(),
-      model: model.id,
+      // Required, but the server currently ignores its value.
+      model: ctx.modelRegistry.getAvailable().find((m) => m.provider === 'openai-codex')?.id,
       commands,
       settings: { allowed_callers: ['direct'], external_web_access: true }, // live fetch
       max_output_tokens: 10_000,
@@ -251,7 +229,7 @@ export default function (pi: ExtensionAPI) {
       const rest = detail ? ` ${theme.fg('accent', detail.replace(/[\n\r\t]/g, ' '))}` : '';
       const line = theme.fg('toolTitle', theme.bold(header)) + rest;
       // One line like Codex: cut at the terminal width instead of wrapping.
-      return { render: (width) => [truncateToWidth(line, width, '…')], invalidate() {} };
+      return new TruncatedText(line);
     },
 
     renderResult(result, _options, theme, context) {

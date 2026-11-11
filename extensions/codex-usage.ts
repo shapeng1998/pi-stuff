@@ -1,7 +1,8 @@
 /**
  * codex-usage: remaining Codex (ChatGPT subscription) rate limits in the footer, plus `/codex-usage`.
  *
- * Reads `GET {baseUrl}/wham/usage`, the endpoint behind Codex's `/status`. Undocumented, may change.
+ * Reads `GET https://chatgpt.com/backend-api/wham/usage`, the endpoint behind Codex's `/status`.
+ * Undocumented, may change.
  *
  * pi has no API to add to the built-in footer: setStatus() adds a line (which pops in after the
  * fetch) and setFooter() replaces it all. So we wrap FooterComponent.render and right-align the
@@ -14,8 +15,7 @@ import {
   type ExtensionContext,
 } from '@earendil-works/pi-coding-agent';
 import { visibleWidth } from '@earendil-works/pi-tui';
-
-const PROVIDER = 'openai-codex';
+import { codexCredentials } from '../lib/codex.ts';
 
 type Window = { used_percent?: number; limit_window_seconds?: number; reset_at?: number };
 type Usage = {
@@ -24,34 +24,13 @@ type Usage = {
 };
 type Limit = { label: string; left: number; resetAt: Date };
 
-// Same as extensions/web.ts: pi's openai-codex login rejects tokens without an account id.
-function accountId(jwt: string): string {
-  try {
-    const claims = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString()) as {
-      'https://api.openai.com/auth'?: { chatgpt_account_id?: string };
-    };
-    const id = claims['https://api.openai.com/auth']?.chatgpt_account_id;
-    if (!id) throw new Error('missing');
-    return id;
-  } catch {
-    throw new Error(`No ChatGPT account id in the ${PROVIDER} token. Run /login ${PROVIDER}.`);
-  }
-}
-
 async function fetchUsage(ctx: ExtensionContext): Promise<{ plan?: string; limits: Limit[] }> {
-  const registry = ctx.modelRegistry;
-  const model = registry.getAvailable().find((m) => m.provider === PROVIDER);
-  if (!model) throw new Error(`No ${PROVIDER} model available. Run /login ${PROVIDER}.`);
-  const auth = await registry.getApiKeyAndHeaders(model);
-  if (!auth.ok || !auth.apiKey)
-    throw new Error(`No ${PROVIDER} credentials. Run /login ${PROVIDER}.`);
-
-  const url = `${(auth.baseUrl ?? model.baseUrl).replace(/\/+$/, '')}/wham/usage`;
-  const res = await fetch(url, {
+  const { apiKey, accountId } = await codexCredentials(ctx);
+  const res = await fetch('https://chatgpt.com/backend-api/wham/usage', {
     signal: AbortSignal.timeout(30_000),
     headers: {
-      Authorization: `Bearer ${auth.apiKey}`,
-      'chatgpt-account-id': accountId(auth.apiKey),
+      Authorization: `Bearer ${apiKey}`,
+      'chatgpt-account-id': accountId,
       originator: 'pi',
       Accept: 'application/json',
     },
@@ -112,7 +91,7 @@ export default function (pi: ExtensionAPI) {
     if (ctx.mode !== 'tui') return;
     FooterComponent.prototype.render = function (width) {
       const lines = originalRender.call(this, width);
-      if (!limits || lines[0] === undefined) return lines;
+      if (!limits) return lines;
       const text = render(ctx.ui.theme, limits);
       const gap = width - visibleWidth(lines[0]) - visibleWidth(text);
       if (gap >= 2) lines[0] += ' '.repeat(gap) + text;
