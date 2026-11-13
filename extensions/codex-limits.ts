@@ -1,5 +1,5 @@
 /**
- * codex-usage: remaining Codex (ChatGPT subscription) rate limits in the footer.
+ * codex-limits: remaining Codex (ChatGPT subscription) rate limits in the footer.
  *
  * Reads `GET https://chatgpt.com/backend-api/wham/usage`, the endpoint behind Codex's `/status`.
  * Undocumented, may change.
@@ -50,12 +50,14 @@ async function fetchLimits(ctx: ExtensionContext): Promise<Limit[]> {
 }
 
 function render(theme: ExtensionContext['ui']['theme'], limits: Limit[]): string {
-  return limits
+  // `left` as in Codex, spelled out because pi's context percentage on the line below is used.
+  const text = limits
     .map(({ label, left }) => {
       const color = left < 5 ? 'error' : left < 20 ? 'warning' : 'dim';
-      return theme.fg(color, `${label}:${Math.round(left)}%`);
+      return theme.fg(color, `${label} ${Math.round(left)}%`);
     })
     .join(' ');
+  return `${text} ${theme.fg('dim', 'left')}`;
 }
 
 export default function (pi: ExtensionAPI) {
@@ -69,7 +71,7 @@ export default function (pi: ExtensionAPI) {
     try {
       limits = await fetchLimits(ctx);
       // Clearing an unused status key is the only way for an extension to request a re-render.
-      ctx.ui.setStatus('codex-usage', undefined);
+      ctx.ui.setStatus('codex-limits', undefined);
     } catch {}
   };
 

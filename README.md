@@ -18,9 +18,9 @@ Codex's `web.run` tool (search, image search, open, find, click, screenshot, fin
 
 > Unofficial and not affiliated with OpenAI. It calls the undocumented `/codex/alpha/search` endpoint with your own ChatGPT credentials, so it may break at any time; use it under OpenAI's terms.
 
-### `codex-usage`
+### `codex-limits`
 
-Remaining Codex 5h and weekly limits on the right of the footer's first line, e.g. `5h:77% 7d:39%`.
+Remaining Codex 5h and weekly limits on the right of the footer's first line, e.g. `5h 77% 7d 39% left`.
 
 - Requires `/login openai-codex`; refreshed at session start and after each agent run.
 - Below 20% a window turns yellow, below 5% red.

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.0] - 2026-11-13
+
+- `codex-usage` is renamed `codex-limits`, since it shows only the remaining limits, not token usage or cost.
+- `codex-limits`: limits are written like pi's own stats and say `left`, as in Codex (`5h 77% 7d 39% left` instead of `5h:77% 7d:39%`), so they are not read as used like the context percentage below them.
+
 ## [0.7.0] - 2026-11-11
 
 - `codex-usage`: the `/codex-usage` command is removed; the limits are shown in the footer only.
