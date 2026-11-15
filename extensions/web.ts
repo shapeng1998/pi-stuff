@@ -1,7 +1,7 @@
 /**
  * web: Codex's `web.run` for any pi model, via the openai-codex search endpoint.
  *
- * Only the API is mirrored from upstream (baseline openai/codex@c9b4267c, 2026-11-08):
+ * Only the API is mirrored from upstream (baseline openai/codex@ee344ca9, 2026-11-15):
  *   - Commands ↔ https://github.com/openai/codex/commits/main/codex-rs/codex-api/src/search.rs
  *   - search() ↔ https://github.com/openai/codex/commits/main/codex-rs/codex-api/src/endpoint/search.rs
  * To sync: check those histories for commits after the baseline, apply, then bump the baseline.
