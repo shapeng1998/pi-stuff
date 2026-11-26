@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.1] - 2026-11-26
+
+- `codex-limits`: limits update during an agent run, between tool calls, from the `codex.rate_limits` event Codex sends with each request, instead of only after the run.
+
 ## [0.8.0] - 2026-11-13
 
 - `codex-usage` is renamed `codex-limits`, since it shows only the remaining limits, not token usage or cost.

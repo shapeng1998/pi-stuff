@@ -2,7 +2,8 @@
  * codex-limits: remaining Codex (ChatGPT subscription) rate limits in the footer.
  *
  * Reads `GET https://chatgpt.com/backend-api/wham/usage`, the endpoint behind Codex's `/status`.
- * Undocumented, may change.
+ * Undocumented, may change. During a run, Codex's websocket stream also sends a `codex.rate_limits`
+ * event at the start of every request, so the limits update between tool calls without a fetch.
  *
  * pi has no API to add to the built-in footer: setStatus() adds a line (which pops in after the
  * fetch) and setFooter() replaces it all. So we wrap FooterComponent.render and right-align the
@@ -17,9 +18,28 @@ import {
 import { visibleWidth } from '@earendil-works/pi-tui';
 import { codexCredentials } from '../lib/codex.ts';
 
-type Window = { used_percent?: number; limit_window_seconds?: number };
+// `/wham/usage` gives the window length in seconds, the stream event in minutes.
+type Window = { used_percent?: number; limit_window_seconds?: number; window_minutes?: number };
 type Usage = { rate_limit?: { primary_window?: Window | null; secondary_window?: Window | null } };
+type StreamEvent = {
+  type?: string;
+  rate_limits?: { primary?: Window | null; secondary?: Window | null };
+};
 type Limit = { label: string; left: number };
+
+function toLimits(windows: (Window | null | undefined)[]): Limit[] {
+  const limits: Limit[] = [];
+  for (const w of windows) {
+    const hours = w?.window_minutes ? w.window_minutes / 60 : (w?.limit_window_seconds ?? 0) / 3600;
+    if (w?.used_percent === undefined || !hours) continue;
+    limits.push({
+      label: hours % 24 === 0 ? `${hours / 24}d` : `${Math.round(hours)}h`,
+      left: Math.max(0, 100 - w.used_percent),
+    });
+  }
+
+  return limits;
+}
 
 async function fetchLimits(ctx: ExtensionContext): Promise<Limit[]> {
   const { apiKey, accountId } = await codexCredentials(ctx);
@@ -35,18 +55,7 @@ async function fetchLimits(ctx: ExtensionContext): Promise<Limit[]> {
 
   if (!res.ok) throw new Error(`Codex usage failed (${res.status})`);
   const data = (await res.json()) as Usage;
-
-  const limits: Limit[] = [];
-  for (const w of [data.rate_limit?.primary_window, data.rate_limit?.secondary_window]) {
-    if (w?.used_percent === undefined || !w.limit_window_seconds) continue;
-    const hours = w.limit_window_seconds / 3600;
-    limits.push({
-      label: hours % 24 === 0 ? `${hours / 24}d` : `${Math.round(hours)}h`,
-      left: Math.max(0, 100 - w.used_percent),
-    });
-  }
-
-  return limits;
+  return toLimits([data.rate_limit?.primary_window, data.rate_limit?.secondary_window]);
 }
 
 function render(theme: ExtensionContext['ui']['theme'], limits: Limit[]): string {
@@ -66,12 +75,16 @@ export default function (pi: ExtensionAPI) {
   const originalRender = FooterComponent.prototype.render;
   let limits: Limit[] = [];
 
+  const show = (ctx: ExtensionContext, next: Limit[]) => {
+    limits = next;
+    // Clearing an unused status key is the only way for an extension to request a re-render.
+    ctx.ui.setStatus('codex-limits', undefined);
+  };
+
   // Nothing reports a failure: the footer keeps the last value, or stays as pi draws it.
   const refresh = async (ctx: ExtensionContext) => {
     try {
-      limits = await fetchLimits(ctx);
-      // Clearing an unused status key is the only way for an extension to request a re-render.
-      ctx.ui.setStatus('codex-limits', undefined);
+      show(ctx, await fetchLimits(ctx));
     } catch {}
   };
 
@@ -94,6 +107,14 @@ export default function (pi: ExtensionAPI) {
     FooterComponent.prototype.render = originalRender;
   });
 
+  pi.on('provider_stream_event', (event, ctx) => {
+    if (ctx.mode !== 'tui') return;
+    const data = event.data as StreamEvent;
+    if (data.type === 'codex.rate_limits')
+      show(ctx, toLimits([data.rate_limits?.primary, data.rate_limits?.secondary]));
+  });
+
+  // The stream event is sent before each request runs, so fetch once more for the run's last request.
   pi.on('agent_settled', (_event, ctx) => {
     if (ctx.mode === 'tui') void refresh(ctx);
   });
